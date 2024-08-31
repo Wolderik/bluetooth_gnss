@@ -465,11 +465,11 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                             children: <Widget>[
                               Text(
                                   'Lat:',
-                                  style: Theme.of(context).textTheme.headline6
+                                  style: Theme.of(context).textTheme.bodyText2
                               ),
                               Text(
                                   (_param_map['lat_double_07_str'] ?? WAITING_DEV),
-                                  style: Theme.of(context).textTheme.headline5
+                                  style: Theme.of(context).textTheme.bodyText1
                               ),
                             ],
                           ),
@@ -478,11 +478,11 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                             children: <Widget>[
                               Text(
                                   'Lon:',
-                                  style: Theme.of(context).textTheme.headline6
+                                  style: Theme.of(context).textTheme.bodyText2
                               ),
                               Text(
                                   (_param_map['lon_double_07_str'] ?? WAITING_DEV),
-                                  style: Theme.of(context).textTheme.headline5
+                                  style: Theme.of(context).textTheme.bodyText1
                               ),
                             ],
                           ),
@@ -583,11 +583,11 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                             children: <Widget>[
                               Text(
                                   'Fix quality:',
-                                  style: Theme.of(context).textTheme.bodyText2
+                                  style: Theme.of(context).textTheme.headline6
                               ),
                               Text(
                                   _param_map["GN_fix_quality"] ?? _param_map["GP_fix_quality"] ?? WAITING_DEV,
-                                  style: Theme.of(context).textTheme.bodyText1
+                                  style: Theme.of(context).textTheme.headline5
                               ),
                             ],
                           ),
