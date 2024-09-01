@@ -106,9 +106,13 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     OutputStream m_log_bt_rx_fos = null;
     OutputStream m_log_bt_rx_csv_fos = null;
     OutputStream m_log_bt_rx_pos_fos = null;
+    OutputStream m_log_ntrip_fos = null;
     OutputStream m_log_operations_fos = null;
     long log_bt_rx_bytes_written = 0;
     boolean m_log_pos_file = true;
+    boolean m_log_ntrip_file = true;
+    long log_ntrip_bytes_written = 0;
+
     public static bluetooth_gnss_service curInstance = null;
 
     @Override
@@ -593,7 +597,8 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             //log(TAG, "ntrip on_read: "+read_buff.toString());
             m_ntrip_cb_count += 1;
             g_rfcomm_mgr.add_send_buffer(read_buff);
-	    m_ntrip_cb_count_added_to_send_buffer += 1;
+	        m_ntrip_cb_count_added_to_send_buffer += 1;
+            log_ntrip(read_buff);
         } catch (Exception e) {
             log(TAG, "ntrip callback on_readline exception: "+ Log.getStackTraceString(e));
         }
@@ -649,6 +654,12 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             if (m_log_bt_rx_pos_fos != null) {
                 m_log_bt_rx_pos_fos.close();
                 m_log_bt_rx_pos_fos = null;
+            }
+        } catch (Exception e) {}
+        try {
+            if (m_log_ntrip_fos != null) {
+                m_log_ntrip_fos.close();
+                m_log_ntrip_fos = null;
             }
         } catch (Exception e) {}
         try {
@@ -791,6 +802,21 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
         }
     }
 
+    public void log_ntrip(byte[] read_buf)
+    {
+        if (read_buf == null || read_buf.length == 0)
+            return;
+        try {
+            if (m_log_ntrip_fos != null) {
+                m_log_ntrip_fos.write(read_buf);
+                log_ntrip_bytes_written += read_buf.length;
+                //log(TAG, "log_ntrip: written n bytes: "+read_buf.length);
+            }
+        } catch (Throwable tr) {
+            Log.d(TAG, "log_ntrip exception: "+Log.getStackTraceString(tr));
+        }
+    }
+
     public static void log(String msg)
     {
         log(TAG, msg);
@@ -883,6 +909,11 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                 df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_location_log.pos"));
             }
 
+            DocumentFile df_ntrip = null;
+            if (!m_disable_ntrip && m_log_ntrip_file) {
+                df_ntrip = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_base_log.txt"));
+            }
+
             if (df == null) {
                 throw new Exception("Failed to create file in folder");
             }
@@ -901,6 +932,10 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                 m_log_bt_rx_pos_fos.write("% (lat/lon/height=WGS84/ellipsoidal,Q=1:fix,2:float,3:sbas,4:dgps,5:single,6:ppp,ns=# of satellites)\n".getBytes());
                 m_log_bt_rx_pos_fos.write("%  GPST                  latitude(deg) longitude(deg)  height(m)   Q  ns   sdn(m)   sde(m)   sdu(m)  sdne(m)  sdeu(m)  sdun(m) age(s)  ratio\n".getBytes());
                 m_log_bt_rx_pos_fos.flush();
+            }
+
+            if (!m_disable_ntrip && m_log_ntrip_file) {
+                m_log_ntrip_fos = get_df_os(df_ntrip);
             }
 
             log(TAG, "log_bt_rx: m_log_bt_rx_fos ready");
