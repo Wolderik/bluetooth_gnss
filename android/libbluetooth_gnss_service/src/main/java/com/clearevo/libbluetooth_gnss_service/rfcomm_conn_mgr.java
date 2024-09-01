@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.lang.reflect.Method;
 
 
 public class rfcomm_conn_mgr {
@@ -56,6 +57,7 @@ public class rfcomm_conn_mgr {
     volatile boolean closed = false;
     Parcelable[] m_fetched_uuids = null;
     Context m_context;
+    static boolean received_disconnected = true;
 
     private final BroadcastReceiver mReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -78,6 +80,46 @@ public class rfcomm_conn_mgr {
                     m_fetched_uuids = uuidExtra;
                 } else {
                     Log.d(TAG, "broadcastreceiver: uuidExtra == null");
+                }
+            }
+            else if (BluetoothDevice.ACTION_ACL_DISCONNECTED.equals(action)) {
+                Log.d(TAG, "broadcastreceiver: got BluetoothDevice.ACTION_ACL_DISCONNECTED");
+                received_disconnected=true;
+            }
+        }
+    };
+
+
+    private final BroadcastReceiver mPairReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            if (BluetoothDevice.ACTION_PAIRING_REQUEST.equals(action)) {
+
+                Log.d(TAG, "broadcastreceiver: got BluetoothDevice.PAIRING_REQUEST");
+
+                BluetoothDevice mBluetoothDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+                try {
+                    Method m = mBluetoothDevice.getClass().getDeclaredMethod("setPin", new Class[]{byte[].class});
+                    String pin_string="1234";
+                    m.invoke(mBluetoothDevice, new Object[] {pin_string.getBytes()});
+                                 // (Samsung) version 4.3 test phone will still pop up the user interaction page (flash), if you do not comment out the following page will not cancel but can be paired successfully. (Zhongxing, Meizu 4) (Flyme 6) version 5.1 mobile phone in both cases are normal
+                    //ClsUtils.setPairingConfirmation(mBluetoothDevice.getClass(), mBluetoothDevice, true);
+                    //abortBroadcast();//If the broadcast is not terminated, a matching box will appear.
+                    //3. Call the setPin method to pair...
+                    //Boolean ret = ClsUtils.setPin(mBluetoothDevice.getClass(), mBluetoothDevice, "The PIN you need to set");
+                } catch (Exception e) {
+                    Log.d(TAG, "broadcastreceiver: set pin exception "+e);
+                    e.printStackTrace();
+                }
+                if (false) {
+                    try {
+                        Method m = mBluetoothDevice.getClass().getDeclaredMethod("setPairingConfirmation", boolean.class);
+                        m.invoke(mBluetoothDevice, true);
+                    } catch (Exception e) {
+                        Log.d(TAG, "broadcastreceiver: setPairingConfirmation exception " + e);
+                        e.printStackTrace();
+                    }
                 }
             }
         }
@@ -140,6 +182,7 @@ public class rfcomm_conn_mgr {
             throw new Exception("m_rfcomm_to_tcp_callbacks not specified");
 
         IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_UUID);
+        filter.addAction(BluetoothDevice.ACTION_ACL_DISCONNECTED);
         m_context.registerReceiver(mReceiver, filter);
 
         Log.d(TAG, "init() done m_readline_callback_mode: " + m_readline_callback_mode);
@@ -206,6 +249,37 @@ public class rfcomm_conn_mgr {
         return found_spp_uuid;
     }
 
+    //Reflect to call BluetoothDevice.removeBond to unpair the device
+    private void unpairpairDevice(BluetoothDevice device, String pin) {
+        Class<?> btClass= m_target_bt_server_dev.getClass();
+        try {
+            //Method m = device.getClass().getMethod("removeBond", (Class[]) null);
+            Method m = btClass.getMethod("removeBond", (Class[]) null);
+            m.invoke(device, (Object[]) null);
+        } catch (Exception e) {
+            Log.d(TAG, "removeBond exception"+e.getMessage());
+        }
+        if (true) {
+            IntentFilter filter = new IntentFilter(BluetoothDevice.ACTION_PAIRING_REQUEST);
+            m_context.registerReceiver(mPairReceiver, filter);
+
+            try {
+                //Method m = btClass.getMethod("createBond", (Class[]) null);
+                //m.invoke(device, (Object[]) null);
+                device.createBond();
+            } catch (Exception e) {
+                Log.d(TAG, "createBond exception" + e.getMessage());
+            }
+            try {
+                //device.setPin(pin.getBytes());
+                Method m = btClass.getDeclaredMethod("setPin", new Class[]{byte[].class});
+                m.invoke(device, new Object[]
+                        {pin.getBytes()});
+            } catch (Exception e) {
+                Log.d(TAG, "setPin exception" + e.getMessage());
+            }
+        }
+    }
 
     public void connect() throws Exception {
         Log.d(TAG, "connect() start");
@@ -214,12 +288,33 @@ public class rfcomm_conn_mgr {
 
             try {
                 if (m_bluetooth_socket != null) {
+                    Log.d(TAG, "connect () m_bluetooth_socket close() requested");
                     m_bluetooth_socket.close();
-                    Log.d(TAG, "m_bluetooth_socket close() done");
+                    Log.d(TAG, "connect () m_bluetooth_socket close() done");
                 }
             } catch (Exception e) {
+                Log.d(TAG, "connect () m_bluetooth_socket close() exception "+e);
             }
             m_bluetooth_socket = null;
+
+            if (false) {
+                try {
+                    BluetoothAdapter.getDefaultAdapter().disable();
+                    Thread.sleep(1000);
+                    BluetoothAdapter.getDefaultAdapter().enable();
+                    Thread.sleep(1000);
+                } catch (Exception e) {
+                    Log.d(TAG, "connect () disable/enable exception " + e);
+                }
+            }
+
+            Log.d(TAG, "connect () received_disconnected " + received_disconnected);
+
+            //if (!received_disconnected) {
+            if(true){
+                // unbond and bond device
+                unpairpairDevice(m_target_bt_server_dev,"1234");
+            }
 
             try {
 
@@ -253,17 +348,27 @@ public class rfcomm_conn_mgr {
 
             BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
             Log.d(TAG, "calling m_bluetooth_socket.connect() START m_target_bt_server_dev: name: "+m_target_bt_server_dev.getName() +" bdaddr: "+m_target_bt_server_dev.getAddress());
-            m_bluetooth_socket.connect();
+            try {
+                m_bluetooth_socket.connect();
+            } catch (Exception e) {
+                Log.d(TAG, "calling m_bluetooth_socket.connect failed " + e);
+                throw new Exception("bluetooth socket connect failed");
+            }
             Log.d(TAG, "calling m_bluetooth_socket.connect() DONE m_target_bt_server_dev: name: "+m_target_bt_server_dev.getName() +" bdaddr: "+m_target_bt_server_dev.getAddress());
+
+            OutputStream bs_os = m_bluetooth_socket.getOutputStream();
+            m_cleanup_closables.add(bs_os);
+
+            //start thread to read from m_outgoing_buffers to bluetooth socket
+            queue_to_outputstream_writer_thread outgoing_thread = new queue_to_outputstream_writer_thread(m_outgoing_buffers, bs_os);
+            m_cleanup_closables.add(outgoing_thread);
+            outgoing_thread.start();
 
             if (m_rfcomm_to_tcp_callbacks != null)
                 m_rfcomm_to_tcp_callbacks.on_rfcomm_connected();
 
             InputStream bs_is = m_bluetooth_socket.getInputStream();
-            OutputStream bs_os = m_bluetooth_socket.getOutputStream();
-
             m_cleanup_closables.add(bs_is);
-            m_cleanup_closables.add(bs_os);
 
             //start thread to read from bluetooth socket to incoming_buffer
             inputstream_to_queue_reader_thread incoming_thread = null;
@@ -275,15 +380,10 @@ public class rfcomm_conn_mgr {
             m_cleanup_closables.add(incoming_thread);
             incoming_thread.start();
 
-            //start thread to read from m_outgoing_buffers to bluetooth socket
-            queue_to_outputstream_writer_thread outgoing_thread = new queue_to_outputstream_writer_thread(m_outgoing_buffers, bs_os);
-            m_cleanup_closables.add(outgoing_thread);
-            outgoing_thread.start();
-
             try {
                 Thread.sleep(500);
             } catch (Exception e) {
-
+                Log.d(TAG, "connect () sleep exception "+e);
             }
 
             if (incoming_thread.isAlive() == false)
@@ -348,6 +448,9 @@ public class rfcomm_conn_mgr {
                                 throw new Exception("sock_os_writer_thread died");
                             }
 
+                            if (m_bluetooth_socket==null){
+                                throw new Exception("bluetooth socket is null");
+                            }
                             if (is_bt_connected() == false) {
                                 throw new Exception("bluetooth device disconnected");
                             }
@@ -382,6 +485,7 @@ public class rfcomm_conn_mgr {
             return m_bluetooth_socket.isConnected();
 
         } catch (Exception e){
+            Log.d(TAG, "is_bt_connected () exception "+e);
         }
         return false;
     }
@@ -403,25 +507,34 @@ public class rfcomm_conn_mgr {
             return;
 
         closed = true;
+        received_disconnected=false;
 
-        try {
-            if (m_context != null && mReceiver != null) {
-                m_context.unregisterReceiver(mReceiver);
+        if (false) {
+            try {
+                if (m_context != null && mReceiver != null) {
+                    m_context.unregisterReceiver(mReceiver);
+                }
+            } catch (Exception e) {
+                Log.d(TAG, "close () unregisterReceiver exception " + e);
             }
-        } catch (Exception e) {
         }
-
 
         try {
             m_conn_state_watcher.interrupt();
             m_conn_state_watcher = null;
         } catch (Exception e) {
+            Log.d(TAG, "close () m_conn_state_watcher exception "+e);
         }
 
         try {
+            Log.d(TAG,"m_bluetooth_socket close() requested");
             m_bluetooth_socket.close();
             Log.d(TAG,"m_bluetooth_socket close() done");
         } catch (Exception e) {
+            Log.d(TAG, "close () m_bluetooth_socket exception "+e);
+        }
+        if (m_bluetooth_socket != null){
+            Log.d(TAG, "close () m_bluetooth_socket isConnected: "+m_bluetooth_socket.isConnected());
         }
         m_bluetooth_socket = null;
 
@@ -430,16 +543,33 @@ public class rfcomm_conn_mgr {
                 m_tcp_server_sock.close();
             }
         } catch (Exception e) {
+            Log.d(TAG, "close () m_tcp_server_sock exception "+e);
         }
         m_tcp_server_sock = null;
 
         for (Closeable closeable : m_cleanup_closables) {
             try {
+                Log.d(TAG,"m_cleanup_closables close() requested");
                 closeable.close();
+                Log.d(TAG,"m_cleanup_closables close() done");
             } catch (Exception e) {
+                Log.d(TAG, "close () closeable exception "+e);
             }
         }
         m_cleanup_closables.clear();
+
+        if (false) {
+            try {
+                int nr_sleeps = 0;
+                while (!received_disconnected && (nr_sleeps < 100)) {
+                    nr_sleeps++;
+                    Thread.sleep(100);
+                    Log.d(TAG, "close () received_disconnected: " + nr_sleeps + " " + received_disconnected);
+                }
+            } catch (Exception e) {
+                Log.d(TAG, "close () received_disconnected exception " + e);
+            }
+        }
     }
 
 }

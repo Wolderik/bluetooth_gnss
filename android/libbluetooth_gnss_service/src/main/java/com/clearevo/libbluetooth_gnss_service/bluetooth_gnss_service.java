@@ -59,7 +59,6 @@ import static com.clearevo.libbluetooth_gnss_service.gnss_sentence_parser.toHexS
 
 import org.json.JSONObject;
 
-
 public class bluetooth_gnss_service extends Service implements rfcomm_conn_callbacks, gnss_sentence_parser.gnss_parser_callbacks, ntrip_conn_callbacks {
 
     static final String TAG = "btgnss_service";
@@ -103,6 +102,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     boolean m_log_bt_rx = false;
     boolean m_disable_ntrip = false;
     public static final boolean m_ble_gap_scan_mode = false; //disabled for now
+    long m_last_readline_received = 0;
     OutputStream m_log_bt_rx_fos = null;
     OutputStream m_log_bt_rx_csv_fos = null;
     OutputStream m_log_bt_rx_pos_fos = null;
@@ -130,7 +130,6 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                     m_bdaddr = intent.getStringExtra("bdaddr");
                     m_secure_rfcomm = intent.getBooleanExtra("secure", true);
                     m_auto_reconnect = intent.getBooleanExtra("reconnect", false);
-
                     m_log_bt_rx = intent.getBooleanExtra("log_bt_rx", false);
                     m_disable_ntrip = intent.getBooleanExtra("disable_ntrip", false);
                     log(TAG, "m_secure_rfcomm: " + m_secure_rfcomm);
@@ -439,8 +438,16 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                     log(TAG, "auto-reconnect thread: "+this.hashCode()+" START");
 
                     try {
-
                         while (m_auto_reconnect_thread == this && m_auto_reconnect) {
+
+                        log(TAG, "auto-reconnect thread: time"+ String.format("%1$TH:%1$TM:%1$TS", System.currentTimeMillis()));
+                        log(TAG, "auto-reconnect thread: (m_bdaddr != null)"+ (m_bdaddr != null));
+                        log(TAG, "auto-reconnect thread: (m_bdaddr.length() > 0)"+ (m_bdaddr.length() > 0));
+                        log(TAG, "auto-reconnect thread: (!is_bt_connected())"+ (!is_bt_connected()));
+                        log(TAG, "auto-reconnect thread: !is_trying_bt_connect())"+ (!is_trying_bt_connect()));
+
+                        long time_since_last_readline = System.currentTimeMillis() - m_last_readline_received;
+                        log(TAG, "auto-reconnect thread: time_since_last_readline"+ time_since_last_readline);
 
                             //connect() must be run from main service thread in case it needs to post
                             if (!is_bt_connected() && !is_trying_bt_connect()) {
@@ -452,18 +459,33 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                                         connect();
                                     }
                                 });
+                        } else if (is_bt_connected() && time_since_last_readline > AUTO_RECONNECT_MILLIS) {
+                            log(TAG, "time_since_last_readline too long");
+                            log(TAG, "auto-reconnect thread - has target dev and not connected - try reconnect...");
+                            m_handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    toast("Auto-Reconnect: Trying to close & connect...");
+                                    close();
+                                    connect();
+                                }
+                            });
                             } else {
                                 log(TAG, "auto-reconnect thread - likely already connecting or already connected or no target dev");
                             }
 
                             try {
                                 log(TAG, "auto-reconnect thread: " + this.hashCode() + " - start sleep");
-                                Thread.sleep(AUTO_RECONNECT_MILLIS);
+                                long sleep_period = AUTO_RECONNECT_MILLIS;
+                                if (is_bt_connected() && time_since_last_readline <= AUTO_RECONNECT_MILLIS) {
+                                    sleep_period -= time_since_last_readline;
+                                }
+                                log(TAG, "sleep period: " + sleep_period);
+                                Thread.sleep(sleep_period);
                             } catch (InterruptedException e) {
                                 log(TAG, "auto-reconnect thread: " + this.hashCode() + " - sleep interrupted likely by close() - break out of loop and end now");
                                 break;
                             }
-
                         }
                     } catch (Throwable tr) {
                         log(TAG, "auto-reconnect thread exception: "+Log.getStackTraceString(tr));
@@ -482,17 +504,22 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     {
         int ret = -1;
 
+        log(TAG, "connect: start");
+
         try {
 
 
             if (is_trying_bt_connect()) {
+                log(TAG, "connection already starting - please wait...");
                 toast("connection already starting - please wait...");
                 return 1;
             } else if (g_rfcomm_mgr != null && g_rfcomm_mgr.is_bt_connected()) {
+                log(TAG, "already connected - press Back to disconnect and exit...");
                 toast("already connected - press Back to disconnect and exit...");
                 return 2;
             } else {
 
+                log(TAG, "connecting to: "+bdaddr);
                 m_gnss_parser = new gnss_sentence_parser(); //use new instance
                 m_gnss_parser.set_callback(this);
 
@@ -597,7 +624,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             //log(TAG, "ntrip on_read: "+read_buff.toString());
             m_ntrip_cb_count += 1;
             g_rfcomm_mgr.add_send_buffer(read_buff);
-	        m_ntrip_cb_count_added_to_send_buffer += 1;
+            m_ntrip_cb_count_added_to_send_buffer += 1;
             log_ntrip(read_buff);
         } catch (Exception e) {
             log(TAG, "ntrip callback on_readline exception: "+ Log.getStackTraceString(e));
@@ -752,13 +779,18 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
         );
         deactivate_mock_location();
         close();
+        if (m_auto_reconnect) {
+            connect();
+        }
     }
 
     public void start_connecting_thread()
     {
+        log(TAG, "start_connecting_thread: start");
         m_connecting_thread = new Thread() {
             public void run() {
                 try {
+                    log(TAG, "start_connecting_thread: call g_rfcomm_mgr.connect");
                     g_rfcomm_mgr.connect();
                 } catch (final Exception e) {
                     m_handler.post(
@@ -813,7 +845,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                 //log(TAG, "log_ntrip: written n bytes: "+read_buf.length);
             }
         } catch (Throwable tr) {
-            Log.d(TAG, "log_ntrip exception: "+Log.getStackTraceString(tr));
+            log(TAG, "log_ntrip exception: "+Log.getStackTraceString(tr));
         }
     }
 
@@ -919,6 +951,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             }
             log_file_uri = df.getUri();
             log(TAG, "log_bt_rx: log_fp: " + df.getUri().toString());
+
             log_bt_rx_bytes_written = 0;
             m_log_bt_rx_fos = get_df_os(df);
             m_log_bt_rx_csv_fos = get_df_os(df_csv);
@@ -962,6 +995,9 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
 
     public void on_readline(byte[] readline)
     {
+        log(TAG, "on_readline begin");
+        m_last_readline_received = System.currentTimeMillis();
+
         try {
             //log(TAG, "rfcomm on_readline: "+new String(readline, "ascii"));
             log_bt_rx(readline);
