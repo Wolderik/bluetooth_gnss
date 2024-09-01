@@ -23,7 +23,7 @@ public class ntrip_conn_mgr {
     static final int HTTP_HEADER_READ_TIMEOUT_MILLIS = 10*1000;
     static final int SOURCETABLE_READ_TIMEOUT_MILLIS = 10*1000;
 
-    static final String SOURCETABLE_STR = " 200 OK";
+    static final String SOURCETABLE_STR = "SOURCETABLE 200 OK";
     static final String END_SOURCETABLE_STR = "ENDSOURCETABLE";
     static final String HTTP_RESPONSE_HEADER_END_FLAG = "\r\n"; //CRLF on its own line signals end of header
     static final String HTTP_200_OK_STR = "200 OK";
@@ -132,50 +132,42 @@ public class ntrip_conn_mgr {
             m_cleanup_closables.add(m_sock_os);
             Log.d(TAG, "done opening tcp socket to host: " + m_tcp_server_host + " port: " + m_tcp_server_port +" m_mount_point: "+m_mount_point);
 
+            if (!m_mount_point.equals("tcp") ) {
 
-            String request_msg = gen_http_request_msg(m_mount_point, m_user, m_pass);
-            Log.d(TAG, "request_msg: "+request_msg);
-            m_sock_os.write(request_msg.getBytes("ascii"));
+                String request_msg = gen_http_request_msg(m_mount_point, m_user, m_pass);
+                Log.d(TAG, "request_msg: " + request_msg);
+                m_sock_os.write(request_msg.getBytes("ascii"));
 
-            //read HTTP Response header
-            ArrayList<String> http_response_header_lines = read_is_get_lines_until(m_sock_is, HTTP_RESPONSE_HEADER_END_FLAG, MAX_HTTP_HEADER_LINES, HTTP_HEADER_READ_TIMEOUT_MILLIS);
-            if (http_response_header_lines.size() ==  0) {
-                throw new Exception("failed to read http response header...");
+                if (get_mount_point_list) {
+
+                    //read HTTP Response header
+                    try {
+                        ArrayList<String> http_response_header_lines = read_is_get_lines_until(m_sock_is, SOURCETABLE_STR, MAX_HTTP_HEADER_LINES, HTTP_HEADER_READ_TIMEOUT_MILLIS);
+                    } catch (Exception e) {
+                        throw new Exception("get_mount_point_list failed as server http_response_header_lines as does not contain: [" + SOURCETABLE_STR + "]");
+                    }
+
+                    //read sourcetable and return here in this if block
+                    try {
+                        ArrayList<String> sourcetable_lines = read_is_get_lines_until(m_sock_is, END_SOURCETABLE_STR, MAX_SOURCETABLE_LINES, SOURCETABLE_READ_TIMEOUT_MILLIS);
+                        Collections.sort(sourcetable_lines);
+                        return sourcetable_lines;
+                    } catch (Exception e) {
+                        throw new Exception("get_mount_point_list failed as server sourcetable_lines as does not contain: [" + END_SOURCETABLE_STR + "]");
+                    }
+
+                } else {
+
+                    //read HTTP Response header
+                    try {
+                        ArrayList<String> http_response_header_lines = read_is_get_lines_until(m_sock_is, HTTP_200_OK_STR, MAX_HTTP_HEADER_LINES, HTTP_HEADER_READ_TIMEOUT_MILLIS);
+                    } catch (Exception e) {
+                        throw new Exception("connect to mount_point failed as server http_response_header_lines does not contain: [" + HTTP_200_OK_STR + "]");
+                    }
+
+                    //follow through to start inputstream_to_queue_reader_thread which will return data buffers read via callbacks...
+                }
             }
-            m_http_response_header_lines = http_response_header_lines;
-            m_http_response_header_str = array_list_string_concat(m_http_response_header_lines);
-
-            //if control reaches here means http_response_header_lines.size() > 0 so get directly
-            String resp_header_first_line = http_response_header_lines.get(0);
-
-            //handle the read http response headers...
-            boolean resp_header_first_line_says_ok = resp_header_first_line.contains(HTTP_200_OK_STR);
-            if (resp_header_first_line_says_ok) {
-                Log.d(TAG, "resp_header_first_line_says_ok");
-            } else {
-                throw new Exception("non-successful ntrip server resp_header_first_line: " + resp_header_first_line);
-            }
-
-            //From here on the inputstream is pointing at the HTTP BODY
-
-            if (get_mount_point_list) {
-
-                //read sourcetable and return here in this if block
-                if (!resp_header_first_line.contains(SOURCETABLE_STR))
-                    throw new Exception("get_mount_point_list failed as server resp_header_first_line: ["+resp_header_first_line+"] does not contain: ["+SOURCETABLE_STR+"] - resp_header_first_line: " + resp_header_first_line);
-
-                ArrayList<String> sourcetable_lines = read_is_get_lines_until(m_sock_is, END_SOURCETABLE_STR, MAX_SOURCETABLE_LINES, SOURCETABLE_READ_TIMEOUT_MILLIS);
-                Collections.sort(sourcetable_lines);
-                return sourcetable_lines;
-
-            } else {
-
-                //follow through to start inputstream_to_queue_reader_thread which will return data buffers read via callbacks...
-                if (!resp_header_first_line.contains(HTTP_200_OK_STR))
-                    throw new Exception("connect to mount_point failed as server resp_header_first_line does not contain: ["+HTTP_200_OK_STR+"] - resp_header_first_line: " + resp_header_first_line);
-
-            }
-
             // if control reaches here means we are in mountpoint connect mode...
 
             //start thread to read from socket to incoming_buffer
