@@ -105,8 +105,10 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     public static final boolean m_ble_gap_scan_mode = false; //disabled for now
     OutputStream m_log_bt_rx_fos = null;
     OutputStream m_log_bt_rx_csv_fos = null;
+    OutputStream m_log_bt_rx_pos_fos = null;
     OutputStream m_log_operations_fos = null;
     long log_bt_rx_bytes_written = 0;
+    boolean m_log_pos_file = true;
     public static bluetooth_gnss_service curInstance = null;
 
     @Override
@@ -644,6 +646,12 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             }
         } catch (Exception e) {}
         try {
+            if (m_log_bt_rx_pos_fos != null) {
+                m_log_bt_rx_pos_fos.close();
+                m_log_bt_rx_pos_fos = null;
+            }
+        } catch (Exception e) {}
+        try {
             if (m_log_operations_fos != null) {
                 m_log_operations_fos.close();
                 m_log_operations_fos = null;
@@ -762,6 +770,8 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     Uri log_file_uri = null;
     SimpleDateFormat log_name_sdf = new SimpleDateFormat("yyyy-MM-dd_HH-mm-ss");
     SimpleDateFormat csv_sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    SimpleDateFormat pos_sdf = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss.SSS");
+
     public void log_bt_rx(byte[] read_buf)
     {
         if (read_buf == null || read_buf.length == 0)
@@ -867,6 +877,12 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             DocumentFile df = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_rx_log.txt"));
             DocumentFile df_csv = create_new_file(getApplicationContext(), log_folder_uri_str, "text/csv", (log_name_sdf.format(new Date()) + "_location_log.csv"));
             DocumentFile lf = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_operations_log.txt"));
+
+            DocumentFile df_pos = null;
+            if (m_log_pos_file) {
+                df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_location_log.pos"));
+            }
+
             if (df == null) {
                 throw new Exception("Failed to create file in folder");
             }
@@ -878,6 +894,15 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             m_log_operations_fos = get_df_os(lf);
             m_log_bt_rx_csv_fos.write("time,lat,lon,alt\n".getBytes());
             m_log_bt_rx_csv_fos.flush();
+
+            if (m_log_pos_file)
+            {
+                m_log_bt_rx_pos_fos = get_df_os(df_pos);
+                m_log_bt_rx_pos_fos.write("% (lat/lon/height=WGS84/ellipsoidal,Q=1:fix,2:float,3:sbas,4:dgps,5:single,6:ppp,ns=# of satellites)\n".getBytes());
+                m_log_bt_rx_pos_fos.write("%  GPST                  latitude(deg) longitude(deg)  height(m)   Q  ns   sdn(m)   sde(m)   sdu(m)  sdne(m)  sdeu(m)  sdun(m) age(s)  ratio\n".getBytes());
+                m_log_bt_rx_pos_fos.flush();
+            }
+
             log(TAG, "log_bt_rx: m_log_bt_rx_fos ready");
             return true;
         } catch (Throwable tr) {
@@ -1369,6 +1394,54 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                                 m_log_bt_rx_csv_fos.flush();
                             } catch (Exception e) {
                                 log(TAG, "WARNING: write csv exception: "+Log.getStackTraceString(e));
+                            }
+                        }
+                        if (m_log_bt_rx_pos_fos != null) {
+                            try {
+                                //String fix_quality_str = (String) params_map.get("GN_fix_quality");
+                                // fix quality can be in GNGGA or GPGGA message
+                                String fix_quality_str = (String) params_map.get(talker+"_fix_quality");
+                                int fix_quality = 0;
+                                double sdn=0;
+                                double sde=0;
+                                double sdu=0;
+
+                                switch(fix_quality_str) {
+
+                                    case "RTK" :
+                                        fix_quality = 1;
+                                        break; // optional
+
+                                    case "FRTK" :
+                                        fix_quality = 2;
+                                        break; // optional
+
+                                    case "DGPS" :
+                                        fix_quality = 4;
+                                        break; // optional
+
+                                    case "NORMAL" :
+                                        fix_quality = 5;
+                                        break; // optional
+
+                                    default :
+                                        // Statements
+                                }
+
+                                if (params_map.containsKey(talker+"_latitude_error")) {  // value from GST
+                                    sdn = (double)params_map.get(talker + "_latitude_error");
+                                }
+                                if (params_map.containsKey(talker+"_longitude_error")) {  // value from GST
+                                    sde = (double)params_map.get(talker + "_longitude_error");
+                                }
+                                if (params_map.containsKey(talker+"_altitude_error")) {  // value from GST
+                                    sdu = (double)params_map.get(talker + "_altitude_error");
+                                }
+                                String line = pos_sdf.format(new_ts)+"   "+lat+"   "+lon+"   "+alt+"   "+fix_quality+"   "+n_sats+"   "+sdn+"   "+sde+"   "+sdu+"   0  0  0  0   0\n";
+                                m_log_bt_rx_pos_fos.write(line.getBytes());
+                                m_log_bt_rx_pos_fos.flush();
+                            } catch (Exception e) {
+                                log(TAG, "WARNING: write pos exception: "+Log.getStackTraceString(e));
                             }
                         }
                         if (m_log_bt_rx_fos != null) {

@@ -9,6 +9,7 @@ import net.sf.marineapi.nmea.sentence.RMCSentence;
 import net.sf.marineapi.nmea.sentence.Sentence;
 import net.sf.marineapi.nmea.sentence.TalkerId;
 import net.sf.marineapi.nmea.sentence.VTGSentence;
+import net.sf.marineapi.nmea.sentence.GSTSentence;
 import net.sf.marineapi.nmea.util.Position;
 import net.sf.marineapi.nmea.util.SatelliteInfo;
 import net.sf.marineapi.nmea.util.Units;
@@ -452,6 +453,26 @@ public class gnss_sentence_parser {
                     }
                     try {
                         put_param(talker_id, "magnetic_course", vtg.getMagneticCourse());
+                    } catch (DataNotAvailableException dae) {
+                    } catch (Exception pe) {
+                        Log.d(TAG, "parse/put gsa nmea: [" + nmea + "] got exception: " + Log.getStackTraceString(pe));
+                    }
+                } else if (sentence instanceof GSTSentence) {
+                    GSTSentence gst = (GSTSentence) sentence;
+                    try {
+                        put_param(talker_id, "latitude_error", gst.getLatitudeError());
+                    } catch (DataNotAvailableException dae) {
+                    } catch (Exception pe) {
+                        Log.d(TAG, "parse/put gsa nmea: [" + nmea + "] got exception: " + Log.getStackTraceString(pe));
+                    }
+                    try {
+                        put_param(talker_id, "longitude_error", gst.getLongitudeError());
+                    } catch (DataNotAvailableException dae) {
+                    } catch (Exception pe) {
+                        Log.d(TAG, "parse/put gsa nmea: [" + nmea + "] got exception: " + Log.getStackTraceString(pe));
+                    }
+                    try {
+                        put_param(talker_id, "altitude_error", gst.getAltitudeError());
                     } catch (DataNotAvailableException dae) {
                     } catch (Exception pe) {
                         Log.d(TAG, "parse/put gsa nmea: [" + nmea + "] got exception: " + Log.getStackTraceString(pe));
