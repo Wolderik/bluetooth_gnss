@@ -31,7 +31,7 @@ dependencies:
   wakelock: 0.5.6
   pref: ^2.7.1
   modal_progress_hud_nsn: ^0.4.0
-
+  geolocator: ^9.0.0
 
 dev_dependencies:
   flutter_test:

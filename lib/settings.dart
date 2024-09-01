@@ -3,6 +3,7 @@ import 'package:pref/pref.dart';
 import 'package:flutter/services.dart';
 import 'dart:math' show cos, sqrt, asin;
 import 'package:modal_progress_hud_nsn/modal_progress_hud_nsn.dart';
+import 'package:geolocator/geolocator.dart';
 
 class settings_widget extends StatefulWidget {
   settings_widget(this.pref_service, Map<dynamic, dynamic> this._bd_map);
@@ -108,18 +109,14 @@ class settings_widget_state extends State<settings_widget> {
             try {
               double last_lat = 0;
               double last_lon = 0;
-              String ref_lat_lon =
-                  widget.pref_service.get('ref_lat_lon') ?? "";
-              last_pos_valid = false;
-              if (ref_lat_lon.contains(",")) {
-                List<String> parts = ref_lat_lon.split(",");
-                if (parts.length == 2) {
-                  try {
-                    last_lat = double.parse(parts[0]);
-                    last_lon = double.parse(parts[1]);
-                    last_pos_valid = true;
-                  } catch (e) {}
-                }
+
+              Position position = await Geolocator.getCurrentPosition(
+                  desiredAccuracy: LocationAccuracy.high);
+              last_pos_valid = position != null;
+              if (position != null) {
+                last_pos_valid = true;
+                last_lat = position.latitude;
+                last_lon = position.longitude;
               }
               print('last_pos_valid: $last_pos_valid $last_lat $last_lon');
 
