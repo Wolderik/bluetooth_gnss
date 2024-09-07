@@ -24,7 +24,11 @@ Future<void> main() async {
             'secure': true,
             'check_settings_location': false,
             'log_bt_rx': false,
+            'config_nr' : 1,
             'disable_ntrip': false,
+            'disable_ntrip_2': false,
+            'disable_ntrip_3': false,
+            'disable_ntrip_4': false,
             'ble_gap_scan_mode': false,
             'autostart': false,
             'list_nearest_streams_first': false,
@@ -1019,6 +1023,12 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
 
             case "RTK/NTRIP":
               //print("build location");
+              int config_nr = PrefService.of(context).get('config_nr');
+              String config_str = "";
+              if (config_nr > 1){
+                config_str = '_$config_nr';
+              }
+
               return  SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(5.0),
@@ -1037,7 +1047,7 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                               ),
                             ),
                             Padding(padding: EdgeInsets.all(10.0)),
-                            Text("${(PrefService.of(context).get('ntrip_host') != null && PrefService.of(context).get('ntrip_port') != null) ? (PrefService.of(context).get('ntrip_host').toString())+":"+PrefService.of(context).get('ntrip_port').toString() : ''}"),
+                            Text("${(PrefService.of(context).get('ntrip_host'+config_str) != null && PrefService.of(context).get('ntrip_port'+config_str) != null) ? (PrefService.of(context).get('ntrip_host'+config_str).toString())+":"+PrefService.of(context).get('ntrip_port'+config_str).toString() : ''}"),
                             Padding(padding: EdgeInsets.all(10.0)),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1048,22 +1058,22 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                                 ),
                                 Text(
                                     (
-                                        PrefService.of(context).get('ntrip_host') != null &&
-                                            PrefService.of(context).get('ntrip_host').toString().length > 0 &&
+                                        PrefService.of(context).get('ntrip_host'+config_str) != null &&
+                                            PrefService.of(context).get('ntrip_host'+config_str).toString().length > 0 &&
 
-                                            PrefService.of(context).get('ntrip_port') != null &&
-                                            PrefService.of(context).get('ntrip_port').toString().length > 0 &&
+                                            PrefService.of(context).get('ntrip_port'+config_str) != null &&
+                                            PrefService.of(context).get('ntrip_port'+config_str).toString().length > 0 &&
 
-                                            PrefService.of(context).get('ntrip_mountpoint') != null &&
-                                            PrefService.of(context).get('ntrip_mountpoint').toString().length > 0 &&
+                                            PrefService.of(context).get('ntrip_mountpoint'+config_str) != null &&
+                                            PrefService.of(context).get('ntrip_mountpoint'+config_str).toString().length > 0 &&
 
-                                            PrefService.of(context).get('ntrip_user') != null &&
-                                            PrefService.of(context).get('ntrip_user').toString().length > 0 &&
+                                            PrefService.of(context).get('ntrip_user'+config_str) != null &&
+                                            PrefService.of(context).get('ntrip_user'+config_str).toString().length > 0 &&
 
-                                            PrefService.of(context).get('ntrip_pass') != null &&
-                                            PrefService.of(context).get('ntrip_pass').toString().length > 0
+                                            PrefService.of(context).get('ntrip_pass'+config_str) != null &&
+                                            PrefService.of(context).get('ntrip_pass'+config_str).toString().length > 0
                                     ) ? (
-                                        (PrefService.of(context).get('disable_ntrip') ?? false) ? "Yes but disabled": "Yes"
+                                        (PrefService.of(context).get('disable_ntrip'+config_str) ?? false) ? "Yes but disabled": "Yes"
                                     ) : "No",
                                     style: Theme.of(context).textTheme.bodyText1
                                 ),
@@ -1078,7 +1088,7 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                                     style: Theme.of(context).textTheme.bodyText2
                                 ),
                                 Text(
-                                    PrefService.of(context).get('ntrip_mountpoint') ?? "None",
+                                    PrefService.of(context).get('ntrip_mountpoint'+config_str) ?? "None",
                                     style: Theme.of(context).textTheme.bodyText1
                                 ),
                               ],
@@ -1562,6 +1572,12 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
     String status = "unknown";
     try {
       print("main.dart connect() start connect start");
+      int config_nr = PrefService.of(context).get('config_nr');
+      String config_str = "";
+      if (config_nr > 1){
+        config_str = '_$config_nr';
+      }
+
       final bool ret = await method_channel.invokeMethod('connect',
               {
                 "bdaddr": bdaddr,
@@ -1569,12 +1585,12 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                 'reconnect' : PrefService.of(context).get('reconnect') ?? false,
                 'ble_gap_scan_mode':  gap_mode,
                 'log_bt_rx' : log_bt_rx,
-                'disable_ntrip' : PrefService.of(context).get('disable_ntrip') ?? false,
-                'ntrip_host': PrefService.of(context).get('ntrip_host'),
-                'ntrip_port': PrefService.of(context).get('ntrip_port'),
-                'ntrip_mountpoint': PrefService.of(context).get('ntrip_mountpoint'),
-                'ntrip_user': PrefService.of(context).get('ntrip_user'),
-                'ntrip_pass': PrefService.of(context).get('ntrip_pass'),
+                'disable_ntrip' : PrefService.of(context).get('disable_ntrip'+config_str) ?? false,
+                'ntrip_host': PrefService.of(context).get('ntrip_host'+config_str),
+                'ntrip_port': PrefService.of(context).get('ntrip_port'+config_str),
+                'ntrip_mountpoint': PrefService.of(context).get('ntrip_mountpoint'+config_str),
+                'ntrip_user': PrefService.of(context).get('ntrip_user'+config_str),
+                'ntrip_pass': PrefService.of(context).get('ntrip_pass'+config_str),
               }
       );
       print("main.dart connect() start connect done");

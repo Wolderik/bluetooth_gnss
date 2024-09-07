@@ -175,7 +175,12 @@ class settings_widget_state extends State<settings_widget> {
               });
 
           print("chosen_mountpoint: $chosen_mountpoint");
-          widget.pref_service.set('ntrip_mountpoint', chosen_mountpoint);
+          int config_nr = widget.pref_service.get('config_nr');
+          String config_str = "";
+          if (config_nr > 1){
+            config_str = '_$config_nr';
+          }
+          widget.pref_service.set('ntrip_mountpoint'+config_str, chosen_mountpoint);
 
           //force re-load of selected ntrip_mountpoint
           Navigator.of(context).pushReplacement(
@@ -288,51 +293,218 @@ class settings_widget_state extends State<settings_widget> {
                 "Set these if your Bluetooth GNSS device supports RTK,\n(Like Ardusimple U-Blox F9, etc)",
                 style: Theme.of(context).textTheme.caption,
               ),
-              PrefCheckbox(title: Text("Disable NTRIP"), pref: 'disable_ntrip'),
-              PrefText(
-                  label: 'Host',
-                  pref: 'ntrip_host',
-                  validator: (str) {
-                    str = str.toString();
-                    if (str == "") {
-                      return "Invalid Host domain/IP";
-                    }
-                    return null;
-                  }),
-              PrefText(
-                  label: 'Port',
-                  pref: 'ntrip_port',
-                  validator: (str) {
-                    str = str.toString();
-                    int? port = intParse(str);
-                    if (port == null || !(port >= 0 && port <= 65535)) {
-                      return "Invalid port";
-                    }
-                    return null;
-                  }),
-              PrefText(label: "Ref lat,lon for sorting", pref: 'ref_lat_lon'),
-              PrefText(
-                  label: "Stream (mount-point)",
-                  pref: 'ntrip_mountpoint',
-                  validator: (str) {
-                    if (str == null) {
-                      return "Invalid mount-point";
-                    }
-                    return null;
-                  }),
-              PrefText(
-                  label: 'User',
-                  pref: 'ntrip_user',
-                  validator: (str) {
-                    return null;
-                  }),
-              PrefText(
-                  label: 'Password',
-                  pref: 'ntrip_pass',
-                  obscureText: true,
-                  validator: (str) {
-                    return null;
-                  }),
+              PrefDropdown<int>(
+                title: Text('Configuration'),
+                pref: 'config_nr',
+                fullWidth: false,
+                items: [
+                  DropdownMenuItem(value: 1, child: Text('One')),
+                  DropdownMenuItem(value: 2, child: Text('Two')),
+                  DropdownMenuItem(value: 3, child: Text('Three')),
+                  DropdownMenuItem(value: 4, child: Text('Four')),
+                ]
+              ),
+              PrefHiderGeneric<int>(
+                  pref: 'config_nr',
+                  nullValue: 1,
+                  reversed: true,
+                  children: [
+                    PrefCheckbox(title: Text("Disable NTRIP"), pref: 'disable_ntrip'),
+                    PrefText(
+                        label: 'Host',
+                        pref: 'ntrip_host',
+                        validator: (str) {
+                          str = str.toString();
+                          if (str == "") {
+                            return "Invalid Host domain/IP";
+                          }
+                          return null;
+                        }
+                    ),
+                    PrefText(
+                        label: 'Port',
+                        pref: 'ntrip_port',
+                        validator: (str) {
+                          str = str.toString();
+                          int? port = intParse(str);
+                          if (port == null || !(port >= 0 && port <= 65535)) {
+                            return "Invalid port";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: "Stream (mount-point)",
+                        pref: 'ntrip_mountpoint',
+                        validator: (str) {
+                          if (str == null) {
+                            return "Invalid mount-point";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'User',
+                        pref: 'ntrip_user',
+                        validator: (str) {
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'Password',
+                        pref: 'ntrip_pass',
+                        obscureText: true,
+                        validator: (str) {
+                          return null;
+                        }),
+                  ]),
+              PrefHiderGeneric<int>(
+              pref: 'config_nr',
+              nullValue: 2,
+              reversed: true,
+              children: [
+                PrefCheckbox(title: Text("Disable NTRIP"), pref: 'disable_ntrip_2'),
+                PrefText(
+                    label: 'Host',
+                    pref: 'ntrip_host_2',
+                    validator: (str) {
+                      str = str.toString();
+                      if (str == "") {
+                        return "Invalid Host domain/IP";
+                      }
+                      return null;
+                    }),
+                PrefText(
+                    label: 'Port',
+                    pref: 'ntrip_port_2',
+                    validator: (str) {
+                      str = str.toString();
+                      int? port = intParse(str);
+                      if (port == null || !(port >= 0 && port <= 65535)) {
+                        return "Invalid port";
+                      }
+                      return null;
+                    }),
+                PrefText(
+                    label: "Stream (mount-point)",
+                    pref: 'ntrip_mountpoint_2',
+                    validator: (str) {
+                      if (str == null) {
+                        return "Invalid mount-point";
+                      }
+                      return null;
+                    }),
+                PrefText(
+                    label: 'User',
+                    pref: 'ntrip_user_2',
+                    validator: (str) {
+                      return null;
+                    }),
+                PrefText(
+                    label: 'Password',
+                    pref: 'ntrip_pass_2',
+                    obscureText: true,
+                    validator: (str) {
+                      return null;
+                    }),
+              ]),
+              PrefHiderGeneric<int>(
+                  pref: 'config_nr',
+                  nullValue: 3,
+                  reversed: true,
+                  children: [
+                    PrefCheckbox(title: Text("Disable NTRIP"), pref: 'disable_ntrip_3'),
+                    PrefText(
+                        label: 'Host',
+                        pref: 'ntrip_host_3',
+                        validator: (str) {
+                          str = str.toString();
+                          if (str == "") {
+                            return "Invalid Host domain/IP";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'Port',
+                        pref: 'ntrip_port_3',
+                        validator: (str) {
+                          str = str.toString();
+                          int? port = intParse(str);
+                          if (port == null || !(port >= 0 && port <= 65535)) {
+                            return "Invalid port";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: "Stream (mount-point)",
+                        pref: 'ntrip_mountpoint_3',
+                        validator: (str) {
+                          if (str == null) {
+                            return "Invalid mount-point";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'User',
+                        pref: 'ntrip_user_3',
+                        validator: (str) {
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'Password',
+                        pref: 'ntrip_pass_3',
+                        obscureText: true,
+                        validator: (str) {
+                          return null;
+                        }),
+                  ]),
+              PrefHiderGeneric<int>(
+                  pref: 'config_nr',
+                  nullValue: 4,
+                  reversed: true,
+                  children: [
+                    PrefCheckbox(title: Text("Disable NTRIP"), pref: 'disable_ntrip_4'),
+                    PrefText(
+                        label: 'Host',
+                        pref: 'ntrip_host_4',
+                        validator: (str) {
+                          str = str.toString();
+                          if (str == "") {
+                            return "Invalid Host domain/IP";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'Port',
+                        pref: 'ntrip_port_4',
+                        validator: (str) {
+                          str = str.toString();
+                          int? port = intParse(str);
+                          if (port == null || !(port >= 0 && port <= 65535)) {
+                            return "Invalid port";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: "Stream (mount-point)",
+                        pref: 'ntrip_mountpoint_4',
+                        validator: (str) {
+                          if (str == null) {
+                            return "Invalid mount-point";
+                          }
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'User',
+                        pref: 'ntrip_user_4',
+                        validator: (str) {
+                          return null;
+                        }),
+                    PrefText(
+                        label: 'Password',
+                        pref: 'ntrip_pass_4',
+                        obscureText: true,
+                        validator: (str) {
+                          return null;
+                        }),
+                  ]),
               Padding(
                 padding: const EdgeInsets.all(5.0),
                 child: ElevatedButton(
@@ -340,14 +512,19 @@ class settings_widget_state extends State<settings_widget> {
                     'List streams from above server',
                   ),
                   onPressed: () async {
+                    int config_nr = widget.pref_service.get('config_nr');
+                    String config_str = "";
+                    if (config_nr > 1){
+                      config_str = '_$config_nr';
+                    }
                     String host =
-                        widget.pref_service.get('ntrip_host') ?? "";
+                        widget.pref_service.get('ntrip_host'+config_str) ?? "";
                     String port =
-                        widget.pref_service.get('ntrip_port') ?? "";
+                        widget.pref_service.get('ntrip_port'+config_str) ?? "";
                     String user =
-                        widget.pref_service.get('ntrip_user') ?? "";
+                        widget.pref_service.get('ntrip_user'+config_str) ?? "";
                     String pass =
-                        widget.pref_service.get('ntrip_pass') ?? "";
+                        widget.pref_service.get('ntrip_pass'+config_str) ?? "";
                     if (host.isEmpty || port.isEmpty) {
                       toast(
                           "Please specify the ntrip_host and ntrip_port first...");
