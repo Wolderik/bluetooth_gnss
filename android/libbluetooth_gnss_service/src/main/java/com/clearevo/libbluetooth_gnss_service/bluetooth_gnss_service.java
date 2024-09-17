@@ -906,7 +906,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
 
             DocumentFile df_pos = null;
             if (m_log_pos_file) {
-                df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_location_log.pos"));
+                df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "", (log_name_sdf.format(new Date()) + "_location_log.pos"));
             }
 
             DocumentFile df_ntrip = null;
