@@ -179,6 +179,7 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     public static final String log_uri_pref_key = "flutter.pref_log_uri";
 
     void connect() {
+
         if (m_ble_gap_scan_mode) {
             log(TAG, "onStartCommand pre call start_forground m_ble_gap_scan_mode " + m_ble_gap_scan_mode);
             start_foreground("Scanning GPS broadcasts...", "", "");
@@ -603,10 +604,21 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             log(TAG, "ntrip callback on_readline exception: "+ Log.getStackTraceString(e));
         }
     }
-    
+
+    public boolean close_after_rfcomm_disconnected()
+    {
+        // do not close log files
+        return close_all(false);
+    };
+
+    public boolean close()
+    {
+        // do close log files
+        return close_all(true);
+    };
 
     //return true if was connected
-    public boolean close()
+    public boolean close_all(boolean close_log_files)
     {
         log(TAG, "close()0");
         deactivate_mock_location();
@@ -635,40 +647,48 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
             } catch (Exception e) {
             }
         }
-        m_ntrip_cb_count = 0;
-        m_ntrip_cb_count_added_to_send_buffer = 0;
 
-        try {
-            if (m_log_bt_rx_fos != null) {
-                m_log_bt_rx_fos.close();
-                m_log_bt_rx_fos = null;
+        if (close_log_files) {
+            m_ntrip_cb_count = 0;
+            m_ntrip_cb_count_added_to_send_buffer = 0;
+
+            try {
+                if (m_log_bt_rx_fos != null) {
+                    m_log_bt_rx_fos.close();
+                    m_log_bt_rx_fos = null;
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {}
-        try {
-            if (m_log_bt_rx_csv_fos != null) {
-                m_log_bt_rx_csv_fos.close();
-                m_log_bt_rx_csv_fos = null;
+            try {
+                if (m_log_bt_rx_csv_fos != null) {
+                    m_log_bt_rx_csv_fos.close();
+                    m_log_bt_rx_csv_fos = null;
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {}
-        try {
-            if (m_log_bt_rx_pos_fos != null) {
-                m_log_bt_rx_pos_fos.close();
-                m_log_bt_rx_pos_fos = null;
+            try {
+                if (m_log_bt_rx_pos_fos != null) {
+                    m_log_bt_rx_pos_fos.close();
+                    m_log_bt_rx_pos_fos = null;
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {}
-        try {
-            if (m_log_ntrip_fos != null) {
-                m_log_ntrip_fos.close();
-                m_log_ntrip_fos = null;
+            try {
+                if (m_log_ntrip_fos != null) {
+                    m_log_ntrip_fos.close();
+                    m_log_ntrip_fos = null;
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {}
-        try {
-            if (m_log_operations_fos != null) {
-                m_log_operations_fos.close();
-                m_log_operations_fos = null;
+            try {
+                if (m_log_operations_fos != null) {
+                    m_log_operations_fos.close();
+                    m_log_operations_fos = null;
+                }
+            } catch (Exception e) {
             }
-        } catch (Exception e) {}
-        log_file_uri = null;
+            log_file_uri = null;
+        }
 
         return was_connected;
     }
@@ -750,8 +770,8 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                     }
                 }
         );
-        deactivate_mock_location();
-        close();
+        //deactivate_mock_location();
+        close_after_rfcomm_disconnected();
     }
 
     public void start_connecting_thread()
