@@ -571,7 +571,20 @@ class settings_widget_state extends State<settings_widget> {
               PrefCheckbox(
                   title: Text("Sort by nearest to to Ref lat,lon"),
                   pref: 'list_nearest_streams_first'),
-            ]),
+              PrefTitle(title: Text('Logging settings')),
+            PrefHiderGeneric<bool>(
+              pref: 'log_bt_rx',
+              nullValue: false,
+              children: [
+                PrefCheckbox(title: Text("Log location in csv format"), pref: 'log_location_csv'),
+                PrefCheckbox(title: Text("Log location in pos format"), pref: 'log_location_pos'),
+                PrefCheckbox(title: Text("Log NTRIP data"), pref: 'log_ntrip_data'),
+                PrefCheckbox(title: Text("Log receiver data"), pref: 'log_receiver_data'),
+                PrefCheckbox(title: Text("Log operations"), pref: 'log_operations'),
+                ])
+
+            ],
+            ),
             inAsyncCall: loading,
           )),
     ));

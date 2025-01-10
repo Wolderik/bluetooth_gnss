@@ -18,4 +18,10 @@ public class GnssConnectionParams {
     public boolean disableNtrip;
     public boolean gapMode;
     public final Map<String, String> extraParams = new HashMap<>();
+    public boolean log_location_csv;
+    public boolean log_location_pos;
+    public boolean log_ntrip_data;
+    public boolean log_receiver_data;
+    public boolean log_operations;
+
 }

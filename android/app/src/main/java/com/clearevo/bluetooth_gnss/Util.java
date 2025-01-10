@@ -27,6 +27,12 @@ public class Util {
         gnssConnectionParams.setDisableNtrip(prefs.getBoolean("flutter.pref_disable_ntrip", false));
         gnssConnectionParams.setGapMode(prefs.getBoolean("flutter.pref_ble_gap_scan_mode", false));
 
+        gnssConnectionParams.setLog_location_csv(prefs.getBoolean("flutter.log_location_csv", false));
+        gnssConnectionParams.setLog_location_pos(prefs.getBoolean("flutter.log_location_pos", false));
+        gnssConnectionParams.setLog_ntrip_data(prefs.getBoolean("flutter.log_ntrip_data", false));
+        gnssConnectionParams.setLog_receiver_data(prefs.getBoolean("flutter.log_receiver_data", false));
+        gnssConnectionParams.setLog_operations(prefs.getBoolean("flutter.log_operations", false));
+
         for (String pk : bluetooth_gnss_service.REQUIRED_INTENT_EXTRA_PARAM_KEYS) {
             final String value = prefs.getString("flutter.pref_" + pk, null);
             if (value != null) gnssConnectionParams.getExtraParams().put(pk, value);
@@ -55,6 +61,13 @@ public class Util {
         intent.putExtra("reconnect", gnssConnectionParams.isReconnect());
         intent.putExtra("log_bt_rx", gnssConnectionParams.isLogBtRx());
         intent.putExtra("disable_ntrip", gnssConnectionParams.isDisableNtrip());
+
+        intent.putExtra("log_location_csv", gnssConnectionParams.isLog_location_csv());
+        intent.putExtra("log_location_pos", gnssConnectionParams.isLog_location_pos());
+        intent.putExtra("log_ntrip_data", gnssConnectionParams.isLog_ntrip_data());
+        intent.putExtra("log_receiver_data", gnssConnectionParams.isLog_receiver_data());
+        intent.putExtra("log_operations", gnssConnectionParams.isLog_operations());
+
         Log.d(TAG, "gnssConnectionParams.isGapMode(): "+ gnssConnectionParams.isGapMode());
         intent.putExtra(bluetooth_gnss_service.BLE_GAP_SCAN_MODE, gnssConnectionParams.isGapMode());
         Log.d(TAG, "mainact extra_params: " + gnssConnectionParams.getExtraParams());

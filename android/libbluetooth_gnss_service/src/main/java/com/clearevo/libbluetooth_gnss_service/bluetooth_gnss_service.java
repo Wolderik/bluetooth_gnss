@@ -109,6 +109,9 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
     OutputStream m_log_ntrip_fos = null;
     OutputStream m_log_operations_fos = null;
     long log_bt_rx_bytes_written = 0;
+    boolean m_log_csv_file = true;
+    boolean m_log_bt_rx_file = true;
+    boolean m_log_operations_file = true;
     boolean m_log_pos_file = true;
     boolean m_log_ntrip_file = true;
     long log_ntrip_bytes_written = 0;
@@ -920,41 +923,52 @@ public class bluetooth_gnss_service extends Service implements rfcomm_conn_callb
                 throw new Exception("Failed to access folder");
             }
 
-            DocumentFile df = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_rx_log.txt"));
-            DocumentFile df_csv = create_new_file(getApplicationContext(), log_folder_uri_str, "text/csv", (log_name_sdf.format(new Date()) + "_location_log.csv"));
-            DocumentFile lf = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_operations_log.txt"));
+            m_log_csv_file = m_start_intent.getBooleanExtra("log_location_csv", false);
+            m_log_pos_file = m_start_intent.getBooleanExtra("log_location_pos", false);
+            m_log_ntrip_file = m_start_intent.getBooleanExtra("log_ntrip_data", false);
+            m_log_bt_rx_file = m_start_intent.getBooleanExtra("log_receiver_data", false);
+            m_log_operations_file = m_start_intent.getBooleanExtra("log_operations", false);
+
+            DocumentFile df = null;
+            if (m_log_bt_rx_file) {
+                df = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_rx_log.txt"));
+
+                if (df == null) {
+                    throw new Exception("Failed to create file in folder");
+                }
+                log_file_uri = df.getUri();
+                log(TAG, "log_bt_rx: log_fp: " + df.getUri().toString());
+                log_bt_rx_bytes_written = 0;
+                m_log_bt_rx_fos = get_df_os(df);
+            }
+
+            DocumentFile lf = null;
+            if (m_log_operations_file) {
+                lf = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_operations_log.txt"));
+                m_log_operations_fos = get_df_os(lf);
+            }
+
+            DocumentFile df_csv = null;
+            if (m_log_csv_file) {
+                df_csv = create_new_file(getApplicationContext(), log_folder_uri_str, "text/csv", (log_name_sdf.format(new Date()) + "_location_log.csv"));
+                m_log_bt_rx_csv_fos = get_df_os(df_csv);
+                m_log_bt_rx_csv_fos.write("time,lat,lon,alt\n".getBytes());
+                m_log_bt_rx_csv_fos.flush();
+            }
 
             DocumentFile df_pos = null;
-            if (m_log_pos_file) {
-                df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "", (log_name_sdf.format(new Date()) + "_location_log.pos"));
-            }
-
-            DocumentFile df_ntrip = null;
-            if (!m_disable_ntrip && m_log_ntrip_file) {
-                df_ntrip = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_base_log.txt"));
-            }
-
-            if (df == null) {
-                throw new Exception("Failed to create file in folder");
-            }
-            log_file_uri = df.getUri();
-            log(TAG, "log_bt_rx: log_fp: " + df.getUri().toString());
-            log_bt_rx_bytes_written = 0;
-            m_log_bt_rx_fos = get_df_os(df);
-            m_log_bt_rx_csv_fos = get_df_os(df_csv);
-            m_log_operations_fos = get_df_os(lf);
-            m_log_bt_rx_csv_fos.write("time,lat,lon,alt\n".getBytes());
-            m_log_bt_rx_csv_fos.flush();
-
             if (m_log_pos_file)
             {
+                df_pos = create_new_file(getApplicationContext(), log_folder_uri_str, "", (log_name_sdf.format(new Date()) + "_location_log.pos"));
                 m_log_bt_rx_pos_fos = get_df_os(df_pos);
                 m_log_bt_rx_pos_fos.write("% (lat/lon/height=WGS84/ellipsoidal,Q=1:fix,2:float,3:sbas,4:dgps,5:single,6:ppp,ns=# of satellites)\n".getBytes());
                 m_log_bt_rx_pos_fos.write("%  GPST                  latitude(deg) longitude(deg)  height(m)   Q  ns   sdn(m)   sde(m)   sdu(m)  sdne(m)  sdeu(m)  sdun(m) age(s)  ratio\n".getBytes());
                 m_log_bt_rx_pos_fos.flush();
             }
 
+            DocumentFile df_ntrip = null;
             if (!m_disable_ntrip && m_log_ntrip_file) {
+                df_ntrip = create_new_file(getApplicationContext(), log_folder_uri_str, "text/plain", (log_name_sdf.format(new Date()) + "_base_log.txt"));
                 m_log_ntrip_fos = get_df_os(df_ntrip);
             }
 

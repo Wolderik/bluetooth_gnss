@@ -33,7 +33,12 @@ Future<void> main() async {
             'autostart': false,
             'list_nearest_streams_first': false,
             'ntrip_host': "igs-ip.net",
-            'ntrip_port': "2101"
+            'ntrip_port': "2101",
+            'log_location_csv': true,
+            'log_location_pos': false,
+            'log_ntrip_data': false,
+            'log_receiver_data': true,
+            'log_operations': true
           }
   );
 
@@ -1591,6 +1596,11 @@ class ScrollableTabsDemoState extends State<ScrollableTabsDemo> with SingleTicke
                 'ntrip_mountpoint': PrefService.of(context).get('ntrip_mountpoint'+config_str),
                 'ntrip_user': PrefService.of(context).get('ntrip_user'+config_str),
                 'ntrip_pass': PrefService.of(context).get('ntrip_pass'+config_str),
+                'log_location_csv': PrefService.of(context).get('log_location_csv'),
+                'log_location_pos': PrefService.of(context).get('log_location_pos'),
+                'log_ntrip_data': PrefService.of(context).get('log_ntrip_data'),
+                'log_receiver_data': PrefService.of(context).get('log_receiver_data'),
+                'log_operations': PrefService.of(context).get('log_operations'),
               }
       );
       print("main.dart connect() start connect done");

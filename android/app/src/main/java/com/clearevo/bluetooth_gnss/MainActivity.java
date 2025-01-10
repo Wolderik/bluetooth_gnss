@@ -93,6 +93,13 @@ public class MainActivity extends FlutterActivity implements gnss_sentence_parse
                                 gnssConnectionParams.logBtRx = (Boolean.TRUE.equals(call.argument("log_bt_rx")));
                                 gnssConnectionParams.disableNtrip = (Boolean.TRUE.equals(call.argument("disable_ntrip")));
                                 gnssConnectionParams.gapMode = (Boolean.TRUE.equals(call.argument("ble_gap_scan_mode")));
+
+                                gnssConnectionParams.log_location_csv = (Boolean.TRUE.equals(call.argument("log_location_csv")));
+                                gnssConnectionParams.log_location_pos = (Boolean.TRUE.equals(call.argument("log_location_pos")));
+                                gnssConnectionParams.log_ntrip_data = (Boolean.TRUE.equals(call.argument("log_ntrip_data")));
+                                gnssConnectionParams.log_receiver_data = (Boolean.TRUE.equals(call.argument("log_receiver_data")));
+                                gnssConnectionParams.log_operations = (Boolean.TRUE.equals(call.argument("log_operations")));
+
                                 for (String pk : bluetooth_gnss_service.REQUIRED_INTENT_EXTRA_PARAM_KEYS) {
                                     gnssConnectionParams.extraParams.put(pk, call.argument(pk));
                                 }
